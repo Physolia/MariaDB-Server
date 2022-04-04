@@ -53,6 +53,8 @@
 #include "sql_show.h"
 #include "transaction.h"
 #include "sql_audit.h"
+#include "rpl_gtid.h"
+#include "rpl_rli.h"
 
 
 #ifdef __WIN__
@@ -8974,6 +8976,11 @@ bool mysql_alter_table(THD *thd,char *new_db, char *new_name,
   */
   int table_kind= check_if_log_table(table_list, FALSE, NullS);
 
+#ifdef HAVE_REPLICATION
+  MDL_request mdl_req_gtid_slave_state;
+  mdl_req_gtid_slave_state.ticket= NULL;
+#endif
+
   if (table_kind)
   {
     /* Disable alter of enabled log tables */
@@ -9212,6 +9219,29 @@ bool mysql_alter_table(THD *thd,char *new_db, char *new_name,
              alter_ctx.new_db, alter_ctx.new_name);
     DBUG_RETURN(true);
   }
+
+#ifdef HAVE_REPLICATION
+  /*
+    The engine of the gtid slave state table (gtid_slave_pos) cannot be changed
+    if the slave is running.
+  */
+  if (old_db_type != new_db_type &&
+      !(strncmp(alter_ctx.db, C_STRING_WITH_LEN("mysql")) ||
+        strncmp(alter_ctx.table_name, rpl_gtid_slave_state_table_name.str,
+                rpl_gtid_slave_state_table_name.length)))
+  {
+    mdl_req_gtid_slave_state.init(MDL_key::TABLE, "mysql",
+                                  rpl_gtid_slave_state_table_name.str,
+                                  MDL_SHARED_NO_WRITE, MDL_EXPLICIT);
+    if (!thd->mdl_context.try_acquire_lock(&mdl_req_gtid_slave_state) &&
+        !mdl_req_gtid_slave_state.ticket)
+    {
+      set_unsafe_gtid_slave_pos_alter_error();
+      DBUG_RETURN(true);
+    }
+  }
+
+#endif
 
   if (table->s->tmp_table == NO_TMP_TABLE)
     mysql_audit_alter_table(thd, table_list);
@@ -9986,6 +10016,11 @@ end_inplace:
     else
       mdl_ticket->downgrade_lock(MDL_SHARED_NO_READ_WRITE);
   }
+
+#ifdef HAVE_REPLICATION
+  if (mdl_req_gtid_slave_state.ticket)
+    thd->mdl_context.release_lock(mdl_req_gtid_slave_state.ticket);
+#endif
 
 end_temporary:
   my_snprintf(alter_ctx.tmp_name, sizeof(alter_ctx.tmp_name),

@@ -997,4 +997,6 @@ int event_group_new_gtid(rpl_group_info *rgi, Gtid_log_event *gev);
 void delete_or_keep_event_post_apply(rpl_group_info *rgi,
                                      Log_event_type typ, Log_event *ev);
 
+extern void set_unsafe_gtid_slave_pos_alter_error();
+
 #endif /* RPL_RLI_H */

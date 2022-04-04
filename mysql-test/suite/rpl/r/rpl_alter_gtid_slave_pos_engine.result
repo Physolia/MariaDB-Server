@@ -1,0 +1,26 @@
+include/master-slave.inc
+[connection master]
+connection slave;
+#
+# Trying to alter gtid_slave_pos table while slave SQL thread is alive
+# should result in an error
+#
+connection slave;
+# Slave_SQL_Running: Yes
+ALTER TABLE mysql.gtid_slave_pos ENGINE=innodb;
+ERROR HY000: This operation cannot be performed as you have a running slave ''; run STOP SLAVE '' first
+#
+# Altering gtid_slave_pos table while slave SQL thread is stopped should
+# succeed
+#
+include/stop_slave.inc
+# Slave_SQL_Running: No
+ALTER TABLE mysql.gtid_slave_pos ENGINE=innodb;
+include/start_slave.inc
+#
+# Cleanup
+#
+include/stop_slave.inc
+ALTER TABLE mysql.gtid_slave_pos ENGINE=MyISAM;
+include/start_slave.inc
+include/rpl_end.inc

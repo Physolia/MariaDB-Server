@@ -2299,4 +2299,11 @@ bool Relay_log_info::flush()
   DBUG_RETURN(error);
 }
 
+void set_unsafe_gtid_slave_pos_alter_error()
+{
+  DBUG_ASSERT(active_mi);
+  my_error(ER_SLAVE_MUST_STOP, MYF(0), (int) active_mi->connection_name.length,
+           active_mi->connection_name.str);
+}
+
 #endif
