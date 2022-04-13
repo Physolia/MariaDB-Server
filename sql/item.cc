@@ -9520,6 +9520,12 @@ error:
   return TRUE;
 }
 
+bool Item_default_value::check_field_expression_processor(void *)
+{
+  field->default_value= ((Item_field *)(arg->real_item()))->field->default_value;
+  return 0;
+}
+
 void Item_default_value::cleanup()
 {
   delete cached_field;                        // Free cached blob data
