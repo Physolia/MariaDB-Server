@@ -5885,12 +5885,11 @@ class Item_default_value : public Item_field
   void calculate();
 public:
   Item *arg;
-  Field *cached_field;
   Item_default_value(THD *thd, Name_resolution_context *context_arg, Item *a,
                      bool vcol_assignment_arg)
     :Item_field(thd, context_arg, (const char *)NULL, (const char *)NULL,
                 &null_clex_str), vcol_assignment_ok(vcol_assignment_arg),
-     arg(a), cached_field(NULL) {}
+     arg(a) {}
   enum Type type() const { return DEFAULT_VALUE_ITEM; }
   bool eq(const Item *item, bool binary_cmp) const;
   bool fix_fields(THD *, Item **);
@@ -5921,7 +5920,7 @@ public:
     return false;
   }
   table_map used_tables() const;
-  virtual void update_used_tables()
+  void update_used_tables()
   {
     if (field && field->default_value)
       field->default_value->expr->update_used_tables();
